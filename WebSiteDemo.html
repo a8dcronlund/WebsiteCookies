@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Browser Storage Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; background: #f9f9f9; }
+    section { margin-bottom: 2em; background: white; padding: 1em; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    button { margin-top: 0.5em; }
+    pre { background: #eee; padding: 0.5em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Browser Persistent Storage Demo</h1>
+
+  <section>
+    <h2>Cookies</h2>
+    <button onclick="setCookie('demo', 'cookie-value', 1)">Set Cookie</button>
+    <button onclick="clearCookie('demo')">Clear Cookie</button>
+    <pre id="cookieDisplay"></pre>
+  </section>
+
+  <section>
+    <h2>LocalStorage</h2>
+    <button onclick="localStorage.setItem('demo', 'local-value'); showLocalStorage();">Set</button>
+    <button onclick="localStorage.clear(); showLocalStorage();">Clear</button>
+    <pre id="localDisplay"></pre>
+  </section>
+
+  <section>
+    <h2>SessionStorage</h2>
+    <button onclick="sessionStorage.setItem('demo', 'session-value'); showSessionStorage();">Set</button>
+    <button onclick="sessionStorage.clear(); showSessionStorage();">Clear</button>
+    <pre id="sessionDisplay"></pre>
+  </section>
+
+  <section>
+    <h2>IndexedDB</h2>
+    <button onclick="addToIndexedDB()">Add Data</button>
+    <button onclick="clearIndexedDB()">Clear DB</button>
+    <pre id="indexedDBDisplay"></pre>
+  </section>
+
+  <section>
+    <h2>Cache Storage</h2>
+    <button onclick="addToCache()">Add Request</button>
+    <button onclick="clearCache()">Clear Cache</button>
+    <pre id="cacheDisplay"></pre>
+  </section>
+
+<script>
+// ----- Cookie Functions -----
+function setCookie(name, value, days) {
+  let expires = new Date(Date.now() + days*864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+  showCookies();
+}
+function clearCookie(name) {
+  document.cookie = `${name}=; Max-Age=0; path=/`;
+  showCookies();
+}
+function showCookies() {
+  document.getElementById('cookieDisplay').textContent = document.cookie;
+}
+
+// ----- LocalStorage -----
+function showLocalStorage() {
+  document.getElementById('localDisplay').textContent = JSON.stringify(localStorage, null, 2);
+}
+
+// ----- SessionStorage -----
+function showSessionStorage() {
+  document.getElementById('sessionDisplay').textContent = JSON.stringify(sessionStorage, null, 2);
+}
+
+// ----- IndexedDB -----
+const DB_NAME = 'DemoDB';
+const STORE_NAME = 'demoStore';
+function openIndexedDB() {
+  return new Promise((resolve, reject) => {
+    let request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function addToIndexedDB() {
+  const db = await openIndexedDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  tx.objectStore(STORE_NAME).add({ time: new Date().toISOString() });
+  tx.oncomplete = showIndexedDB;
+}
+async function showIndexedDB() {
+  const db = await openIndexedDB();
+  const tx = db.transaction(STORE_NAME);
+  const store = tx.objectStore(STORE_NAME);
+  const allData = store.getAll();
+  allData.onsuccess = () => {
+    document.getElementById('indexedDBDisplay').textContent = JSON.stringify(allData.result, null, 2);
+  };
+}
+async function clearIndexedDB() {
+  const db = await openIndexedDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  tx.objectStore(STORE_NAME).clear();
+  tx.oncomplete = showIndexedDB;
+}
+
+// ----- Cache Storage -----
+async function addToCache() {
+  const cache = await caches.open('demo-cache');
+  await cache.put('/demo', new Response('Hello from cache!'));
+  showCache();
+}
+async function showCache() {
+  const cache = await caches.open('demo-cache');
+  const keys = await cache.keys();
+  document.getElementById('cacheDisplay').textContent = keys.map(r => r.url).join('\n');
+}
+async function clearCache() {
+  await caches.delete('demo-cache');
+  showCache();
+}
+
+// ----- Initial Render -----
+showCookies();
+showLocalStorage();
+showSessionStorage();
+showIndexedDB();
+showCache();
+</script>
+</body>
+</html>
