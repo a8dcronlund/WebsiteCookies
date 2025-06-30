@@ -7,7 +7,8 @@
     body { font-family: sans-serif; padding: 2em; background: #f9f9f9; }
     section { margin-bottom: 2em; background: white; padding: 1em; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     button { margin-top: 0.5em; }
-    pre { background: #eee; padding: 0.5em; border-radius: 4px; }
+    input { margin-top: 0.5em; display: block; width: 100%; padding: 0.5em; }
+    pre { background: #eee; padding: 0.5em; border-radius: 4px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -15,41 +16,45 @@
 
   <section>
     <h2>Cookies</h2>
-    <button onclick="setCookie('demo', 'cookie-value', 1)">Set Cookie</button>
+    <input id="cookieInput" placeholder="Enter cookie value">
+    <button onclick="setCookie('demo', document.getElementById('cookieInput').value, 1)">Set Cookie</button>
     <button onclick="clearCookie('demo')">Clear Cookie</button>
     <pre id="cookieDisplay"></pre>
   </section>
 
   <section>
     <h2>LocalStorage</h2>
-    <button onclick="localStorage.setItem('demo', 'local-value'); showLocalStorage();">Set</button>
+    <input id="localInput" placeholder="Enter localStorage value">
+    <button onclick="localStorage.setItem('demo', document.getElementById('localInput').value); showLocalStorage();">Set</button>
     <button onclick="localStorage.clear(); showLocalStorage();">Clear</button>
     <pre id="localDisplay"></pre>
   </section>
 
   <section>
     <h2>SessionStorage</h2>
-    <button onclick="sessionStorage.setItem('demo', 'session-value'); showSessionStorage();">Set</button>
+    <input id="sessionInput" placeholder="Enter sessionStorage value">
+    <button onclick="sessionStorage.setItem('demo', document.getElementById('sessionInput').value); showSessionStorage();">Set</button>
     <button onclick="sessionStorage.clear(); showSessionStorage();">Clear</button>
     <pre id="sessionDisplay"></pre>
   </section>
 
   <section>
     <h2>IndexedDB</h2>
-    <button onclick="addToIndexedDB()">Add Data</button>
+    <input id="indexedInput" placeholder="Enter IndexedDB value">
+    <button onclick="addToIndexedDB(document.getElementById('indexedInput').value)">Add Data</button>
     <button onclick="clearIndexedDB()">Clear DB</button>
     <pre id="indexedDBDisplay"></pre>
   </section>
 
   <section>
     <h2>Cache Storage</h2>
-    <button onclick="addToCache()">Add Request</button>
+    <input id="cacheInput" placeholder="Enter cache value">
+    <button onclick="addToCache(document.getElementById('cacheInput').value)">Add Request</button>
     <button onclick="clearCache()">Clear Cache</button>
     <pre id="cacheDisplay"></pre>
   </section>
 
 <script>
-// ----- Cookie Functions -----
 function setCookie(name, value, days) {
   let expires = new Date(Date.now() + days*864e5).toUTCString();
   document.cookie = `${name}=${value}; expires=${expires}; path=/`;
@@ -62,18 +67,12 @@ function clearCookie(name) {
 function showCookies() {
   document.getElementById('cookieDisplay').textContent = document.cookie;
 }
-
-// ----- LocalStorage -----
 function showLocalStorage() {
   document.getElementById('localDisplay').textContent = JSON.stringify(localStorage, null, 2);
 }
-
-// ----- SessionStorage -----
 function showSessionStorage() {
   document.getElementById('sessionDisplay').textContent = JSON.stringify(sessionStorage, null, 2);
 }
-
-// ----- IndexedDB -----
 const DB_NAME = 'DemoDB';
 const STORE_NAME = 'demoStore';
 function openIndexedDB() {
@@ -86,10 +85,10 @@ function openIndexedDB() {
     request.onerror = () => reject(request.error);
   });
 }
-async function addToIndexedDB() {
+async function addToIndexedDB(value) {
   const db = await openIndexedDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
-  tx.objectStore(STORE_NAME).add({ time: new Date().toISOString() });
+  tx.objectStore(STORE_NAME).add({ value, time: new Date().toISOString() });
   tx.oncomplete = showIndexedDB;
 }
 async function showIndexedDB() {
@@ -107,24 +106,24 @@ async function clearIndexedDB() {
   tx.objectStore(STORE_NAME).clear();
   tx.oncomplete = showIndexedDB;
 }
-
-// ----- Cache Storage -----
-async function addToCache() {
+async function addToCache(value) {
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    document.getElementById('cacheDisplay').textContent = 'Cache Storage requires HTTP/HTTPS';
+    return;
+  }
   const cache = await caches.open('demo-cache');
-  await cache.put('/demo', new Response('Hello from cache!'));
+  await cache.put('/demo', new Response(value || 'Hello from cache!'));
   showCache();
 }
 async function showCache() {
   const cache = await caches.open('demo-cache');
   const keys = await cache.keys();
-  document.getElementById('cacheDisplay').textContent = keys.map(r => r.url).join('\n');
+  document.getElementById('cacheDisplay').textContent = keys.map(r => r.url).join('\n') || 'No cached entries.';
 }
 async function clearCache() {
   await caches.delete('demo-cache');
   showCache();
 }
-
-// ----- Initial Render -----
 showCookies();
 showLocalStorage();
 showSessionStorage();
